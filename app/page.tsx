@@ -1,12 +1,12 @@
 'use client';
-import { db } from './firebaseConfig'
+import { db } from './firebaseConfig';
 import { collection, addDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 //import Image from "next/image";
 //import styles from "./page.module.css";
 
 
-async function addDataToFireStore(name: any, email: any, message: any) {
+async function addDataToFireStore(name: string, email: string, message: string) {
   try{
     const docRef = await addDoc(collection(db, "message"), {
       name: name,
@@ -16,7 +16,7 @@ async function addDataToFireStore(name: any, email: any, message: any) {
     console.log("Document written with ID: ", docRef.id);
     return true;
   } catch (error) {
-    console.error("Error adding document", error)
+    console.error("Error adding document", error);
     return false;
   }
   
@@ -36,7 +36,7 @@ export default function Home() {
       setEmail("");
       setMessage("");
 
-      alert("Data added to Firestore DB!!")
+      alert("Data added to Firestore DB!!");
     }
   };
    return (
@@ -95,5 +95,5 @@ export default function Home() {
      </div>
      </form>
      </main></>
-  )
+  );
 }
