@@ -14,17 +14,16 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
         router.push('/login');
         return;
       }
 
-      setUser(user); // store user to show name/email
+      setUser(firebaseUser);
 
       try {
-        // ✅ Correct Firestore collection: dashboards
-        const docRef = doc(db, 'dashboards', user.uid);
+        const docRef = doc(db, 'dashboards', firebaseUser.uid);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -49,13 +48,24 @@ export default function Dashboard() {
     router.push('/login');
   };
 
+  // 🔒 While loading or auth not verified, render nothing or a spinner
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-gray-500 text-xl animate-pulse">Verifying user...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Welcome, {user?.displayName || user?.email || 'User'} 👋</h1>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Welcome, {user?.displayName || user?.email || 'User'} 👋
+            </h1>
             <p className="text-gray-500 text-sm mt-1">Here is your personalized dashboard</p>
           </div>
           <button
@@ -66,20 +76,15 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Loading */}
-        {loading && (
-          <div className="w-full h-64 bg-gray-100 rounded-xl animate-pulse flex items-center justify-center">
-            <p className="text-gray-400">Loading dashboard...</p>
+        {/* Error */}
+        {error && (
+          <div className="text-red-600 text-center text-lg font-semibold">
+            {error}
           </div>
         )}
 
-        {/* Error */}
-        {error && !loading && (
-          <p className="text-red-600 text-center text-lg">{error}</p>
-        )}
-
         {/* Dashboard */}
-        {!loading && !error && lookerUrl && (
+        {!error && lookerUrl && (
           <div className="relative overflow-hidden rounded-xl border border-gray-200 shadow-md">
             <iframe
               src={lookerUrl}
