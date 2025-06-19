@@ -1,84 +1,90 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider, db } from "../firebaseConfig"; 
+import { doc, getDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false); // 👈
 
-  useEffect(() => {
-    setIsClient(true); // mark client ready
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
+      const user = userCredential.user;
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('uid', uid); // ✅ only runs on client
+      // 🔄 Get Looker URL from Firestore using email
+      const dashboardRef = doc(db, "dashboards", user.email);
+      const dashboardSnap = await getDoc(dashboardRef);
+
+      if (dashboardSnap.exists()) {
+        const lookerUrl = dashboardSnap.data().lookerUrl;
+        // Redirect or embed Looker
+        router.push(`/dashboard?url=${encodeURIComponent(lookerUrl)}`);
+      } else {
+        alert("No Looker dashboard found for this user.");
       }
-
-      router.push('/dashboard');
-    } catch (error: any) {
-      alert('Login failed: ' + error.message);
+    } catch (error) {
+      alert(error.message);
     }
   };
 
-  if (!isClient) return null; // ✅ prevent hydration mismatch
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      const dashboardRef = doc(db, "dashboards", user.email);
+      const dashboardSnap = await getDoc(dashboardRef);
+
+      if (dashboardSnap.exists()) {
+        const lookerUrl = dashboardSnap.data().lookerUrl;
+        router.push(`/dashboard?url=${encodeURIComponent(lookerUrl)}`);
+      } else {
+        alert("No Looker dashboard found for this user.");
+      }
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
-          <p className="text-sm text-gray-500">Login to your account to continue</p>
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <form onSubmit={handleEmailLogin} className="bg-white p-8 rounded shadow w-80">
+        <h2 className="text-xl font-semibold mb-4">Login</h2>
+        <input
+          type="email"
+          placeholder="Email"
+          className="mb-2 w-full p-2 border rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="mb-4 w-full p-2 border rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+        >
+          Sign In
+        </button>
+      </form>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-600">
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-600">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200 font-semibold"
-          >
-            Login
-          </button>
-        </form>
+      <div className="mt-4">
+        <button
+          onClick={handleGoogleSignIn}
+          className="bg-red-500 text-white py-2 px-6 rounded hover:bg-red-600"
+        >
+          Sign in with Google
+        </button>
       </div>
     </div>
   );
